@@ -1,1 +1,28 @@
-{"id":"wakemedia-stagetime","name":"Wake Media StageTime","shortname":"StageTime","description":"Control the StageTime countdown timer application","version":"1.0.0","license":"MIT","repository":"git+https://github.com/wakemedia/companion-module-wakemedia-stagetime.git","bugs":"https://github.com/wakemedia/companion-module-wakemedia-stagetime/issues","maintainers":[{"name":"Michael Yarabinee","email":""}],"legacyIds":[],"runtime":{"type":"node18","api":"nodejs-ipc","apiVersion":"1.11.3","entrypoint":"../main.js"},"manufacturer":"Wake Media","products":["StageTime"],"keywords":["timer","countdown","clock","stagetime"]}
+{
+	"$schema": "../node_modules/@companion-module/base/assets/manifest.schema.json",
+	"type": "connection",
+	"id": "wakemedia-stagetime",
+	"name": "Wake Media StageTime",
+	"shortname": "StageTime",
+	"description": "Control the StageTime countdown timer app: timer, presets, messages, blackout, options, with live feedback",
+	"version": "0.0.0",
+	"license": "MIT",
+	"repository": "git+https://github.com/bitfocus/companion-module-wakemedia-stagetime.git",
+	"bugs": "https://github.com/bitfocus/companion-module-wakemedia-stagetime/issues",
+	"maintainers": [
+		{
+			"name": "Michael Yarabinee",
+			"email": "support@stagetime.app"
+		}
+	],
+	"runtime": {
+		"type": "node22",
+		"api": "nodejs-ipc",
+		"apiVersion": "0.0.0",
+		"entrypoint": "../dist/main.js"
+	},
+	"legacyIds": [],
+	"manufacturer": "Wake Media",
+	"products": ["StageTime"],
+	"keywords": ["timer", "countdown", "stopwatch", "clock", "stage", "speaker", "stagetime", "wake media"]
+}

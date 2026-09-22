@@ -1,247 +1,392 @@
-import { combineRgb, type CompanionPresetDefinitions } from '@companion-module/base'
+import { combineRgb, type CompanionPresetDefinitions, type CompanionPresetSection } from '@companion-module/base'
+import type StageTimeInstance from './main.js'
+import type { ModuleSchema } from './main.js'
+import { TIME_ZONES } from './api.js'
 
-export function getPresets(): CompanionPresetDefinitions {
-  const presets: CompanionPresetDefinitions = {}
+type Presets = CompanionPresetDefinitions<ModuleSchema>
+type Preset = NonNullable<Presets[string]> & { type: 'simple' }
+type Steps = Preset['steps']
+type Feedbacks = Preset['feedbacks']
+type Style = Preset['style']
 
-  // --- Timer Controls ---
-  presets['toggle'] = {
-    type: 'button',
-    category: 'Timer Controls',
-    name: 'Start / Stop',
-    style: {
-      text: 'START',
-      size: 18,
-      color: combineRgb(255, 255, 255),
-      bgcolor: combineRgb(0, 100, 0),
-    },
-    steps: [{ down: [{ actionId: 'toggle', options: {} }], up: [] }],
-    feedbacks: [
-      {
-        feedbackId: 'timerRunning',
-        style: { bgcolor: combineRgb(150, 0, 0), text: 'STOP' },
-        options: {},
-      },
-      {
-        feedbackId: 'timerStopped',
-        style: { bgcolor: combineRgb(0, 100, 0), text: 'START' },
-        options: {},
-      },
-    ],
-  }
+const WHITE = combineRgb(255, 255, 255)
+const BLACK = combineRgb(0, 0, 0)
+const DARK = combineRgb(40, 40, 40)
+const NAVY = combineRgb(40, 40, 60)
+const GREEN = combineRgb(0, 100, 0)
+const ON = combineRgb(0, 120, 0)
+const V = (id: string) => `$(wakemedia-stagetime:${id})`
 
-  presets['clear'] = {
-    type: 'button',
-    category: 'Timer Controls',
-    name: 'Clear',
-    style: {
-      text: 'CLEAR',
-      size: 18,
-      color: combineRgb(255, 255, 255),
-      bgcolor: combineRgb(30, 30, 80),
-    },
-    steps: [{ down: [{ actionId: 'clear', options: {} }], up: [] }],
-    feedbacks: [],
-  }
+/** One press step: every action runs in order on button down */
+const press = (...actions: Steps[number]['down']): Steps => [{ down: actions, up: [] }]
+const NO_ACTION: Steps = [{ down: [], up: [] }]
+const optionOn = (option: string, bgcolor = ON): Feedbacks[number] => ({
+	feedbackId: 'optionOn',
+	style: { bgcolor },
+	options: { option },
+})
+const modeIs = (mode: 'countdown' | 'stopwatch' | 'clock'): Feedbacks[number] => ({
+	feedbackId: 'modeIs',
+	style: { bgcolor: ON },
+	options: { mode },
+})
 
-  // --- Time Adjustment ---
-  const timeAdjustments: Array<{ label: string; actionId: string; amount: number }> = [
-    { label: '+1 MIN', actionId: 'addMinutes', amount: 1 },
-    { label: '+5 MIN', actionId: 'addMinutes', amount: 5 },
-    { label: '+10 MIN', actionId: 'addMinutes', amount: 10 },
-    { label: '+30 SEC', actionId: 'addSeconds', amount: 30 },
-    { label: '-1 MIN', actionId: 'addMinutes', amount: -1 },
-    { label: '-5 MIN', actionId: 'addMinutes', amount: -5 },
-    { label: '-10 MIN', actionId: 'addMinutes', amount: -10 },
-    { label: '-30 SEC', actionId: 'addSeconds', amount: -30 },
-  ]
+function button(
+	name: string,
+	text: string,
+	bgcolor: number,
+	steps: Steps,
+	feedbacks: Feedbacks = [],
+	size: Style['size'] = 14,
+	color = WHITE,
+): Preset {
+	return { type: 'simple', name, style: { text, size, color, bgcolor }, steps, feedbacks }
+}
 
-  for (const adj of timeAdjustments) {
-    const key = `adj_${adj.actionId}_${String(adj.amount).replace('-', 'neg')}`
-    presets[key] = {
-      type: 'button',
-      category: 'Time Adjustment',
-      name: adj.label,
-      style: {
-        text: adj.label,
-        size: 14,
-        color: combineRgb(255, 255, 255),
-        bgcolor: combineRgb(40, 40, 40),
-      },
-      steps: [{ down: [{ actionId: adj.actionId, options: { amount: adj.amount } }], up: [] }],
-      feedbacks: [],
-    }
-  }
+export function UpdatePresets(self: StageTimeInstance): void {
+	const presets: Presets = {}
+	const structure: CompanionPresetSection<ModuleSchema>[] = []
+	/** Add a preset to a section, creating the section on first use */
+	const add = (section: string, id: string, preset: Preset): void => {
+		presets[id] = preset
+		let sec = structure.find((s) => s.name === section)
+		if (!sec) {
+			sec = { id: section.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name: section, definitions: [] }
+			structure.push(sec)
+		}
+		;(sec.definitions as string[]).push(id)
+	}
 
-  // --- Quick Set ---
-  const quickSets = [5, 10, 15, 30, 45, 60]
-  for (const min of quickSets) {
-    presets[`set_${min}`] = {
-      type: 'button',
-      category: 'Quick Set',
-      name: `Set ${min} min`,
-      style: {
-        text: `${min}:00`,
-        size: 18,
-        color: combineRgb(255, 255, 255),
-        bgcolor: combineRgb(40, 40, 60),
-      },
-      steps: [{ down: [{ actionId: 'setTime', options: { minutes: min, seconds: 0 } }], up: [] }],
-      feedbacks: [],
-    }
-  }
+	// ───────── Timer ─────────
+	// One start/stop button (the label follows the state), one clear, one display-only readout.
+	add(
+		'Timer',
+		'timer_toggle',
+		button(
+			'Start / Stop',
+			'START',
+			GREEN,
+			press({ actionId: 'toggle', options: {} }),
+			[{ feedbackId: 'timerRunning', style: { bgcolor: combineRgb(150, 0, 0), text: 'STOP' }, options: {} }],
+			18,
+		),
+	)
+	add(
+		'Timer',
+		'timer_clear',
+		button('Clear', 'CLEAR', combineRgb(30, 30, 80), press({ actionId: 'clear', options: {} }), [], 18),
+	)
+	add(
+		'Timer',
+		'timer_live',
+		button(
+			'Live timer readout (display only)',
+			V('formattedTimeSigned'),
+			BLACK,
+			NO_ACTION,
+			[{ feedbackId: 'lightColor', options: {} }],
+			18,
+		),
+	)
+	add(
+		'Timer',
+		'timer_end_at',
+		button(
+			'Count down to a clock time (edit the time)',
+			'END AT\\n14:30',
+			combineRgb(60, 40, 80),
+			press({ actionId: 'endAt', options: { time: '14:30' } }),
+			[{ feedbackId: 'timerRunning', style: { bgcolor: GREEN }, options: {} }],
+		),
+	)
 
-  // --- Presets ---
-  for (let i = 1; i <= 5; i++) {
-    presets[`preset_${i}`] = {
-      type: 'button',
-      category: 'Presets',
-      name: `Load Preset ${i}`,
-      style: {
-        text: `P${i}\\n$(wakemedia-stagetime:preset_${i}_name)`,
-        size: 14,
-        color: combineRgb(255, 255, 255),
-        bgcolor: combineRgb(30, 30, 50),
-      },
-      steps: [{ down: [{ actionId: 'loadPreset', options: { slot: String(i) } }], up: [] }],
-      feedbacks: [],
-    }
-  }
+	// ───────── Adjust Time ─────────
+	const adjustments: Array<[string, 'minutes' | 'seconds', number]> = [
+		['+1 SEC', 'seconds', 1],
+		['+30 SEC', 'seconds', 30],
+		['+1 MIN', 'minutes', 1],
+		['+5 MIN', 'minutes', 5],
+		['+10 MIN', 'minutes', 10],
+		['-1 SEC', 'seconds', -1],
+		['-30 SEC', 'seconds', -30],
+		['-1 MIN', 'minutes', -1],
+		['-5 MIN', 'minutes', -5],
+		['-10 MIN', 'minutes', -10],
+	]
+	for (const [label, unit, amount] of adjustments) {
+		add(
+			'Adjust Time',
+			`adjust_${unit}_${String(amount).replace('-', 'minus')}`,
+			button(label, label, DARK, press({ actionId: 'addTime', options: { amount, unit } })),
+		)
+	}
 
-  // --- Messages ---
-  presets['msg_wrapup'] = {
-    type: 'button',
-    category: 'Messages',
-    name: 'Show WRAP UP',
-    style: {
-      text: 'WRAP\\nUP',
-      size: 14,
-      color: combineRgb(255, 255, 255),
-      bgcolor: combineRgb(100, 50, 0),
-    },
-    steps: [{ down: [{ actionId: 'showMessage', options: { text: 'WRAP UP' } }], up: [] }],
-    feedbacks: [
-      {
-        feedbackId: 'messageVisible',
-        style: { bgcolor: combineRgb(150, 50, 0) },
-        options: {},
-      },
-    ],
-  }
+	// ───────── Quick Set ─────────
+	for (const min of [5, 10, 15, 20, 30, 45, 60]) {
+		add(
+			'Quick Set',
+			`set_${min}`,
+			button(
+				`Set ${min} min`,
+				`${min}:00`,
+				NAVY,
+				press({ actionId: 'setTime', options: { minutes: min, seconds: 0 } }),
+				[],
+				18,
+			),
+		)
+	}
 
-  presets['msg_show'] = {
-    type: 'button',
-    category: 'Messages',
-    name: 'Show Message',
-    style: {
-      text: 'SHOW\\nMSG',
-      size: 14,
-      color: combineRgb(255, 255, 255),
-      bgcolor: combineRgb(50, 30, 80),
-    },
-    steps: [{ down: [{ actionId: 'showMessage', options: { text: 'MESSAGE' } }], up: [] }],
-    feedbacks: [
-      {
-        feedbackId: 'messageVisible',
-        style: { bgcolor: combineRgb(80, 30, 120) },
-        options: {},
-      },
-    ],
-  }
+	// ───────── Presets ─────────
+	for (let i = 1; i <= 5; i++) {
+		add(
+			'Presets',
+			`preset_${i}`,
+			button(
+				`Load preset ${i}`,
+				`${V(`preset_${i}_name`)}\\n${V(`preset_${i}_time`)}`,
+				combineRgb(30, 30, 50),
+				press({ actionId: 'loadPreset', options: { slot: String(i) } }),
+				[{ feedbackId: 'presetSet', style: { bgcolor: combineRgb(50, 50, 110) }, options: { slot: String(i) } }],
+			),
+		)
+	}
 
-  presets['msg_hide'] = {
-    type: 'button',
-    category: 'Messages',
-    name: 'Hide Message',
-    style: {
-      text: 'HIDE\\nMSG',
-      size: 14,
-      color: combineRgb(255, 255, 255),
-      bgcolor: combineRgb(50, 50, 50),
-    },
-    steps: [{ down: [{ actionId: 'hideMessage', options: {} }], up: [] }],
-    feedbacks: [],
-  }
+	// ───────── Messages ─────────
+	for (let i = 1; i <= 6; i++) {
+		add(
+			'Messages',
+			`quick_${i}`,
+			button(
+				`Quick message ${i}`,
+				V(`quick_${i}_text`),
+				combineRgb(60, 30, 0),
+				press({ actionId: 'quickMessage', options: { slot: String(i) } }),
+				[
+					{ feedbackId: 'quickMessageSet', style: { bgcolor: combineRgb(120, 60, 0) }, options: { slot: String(i) } },
+					{ feedbackId: 'messageVisible', style: { bgcolor: combineRgb(180, 90, 0) }, options: {} },
+				],
+			),
+		)
+	}
+	add(
+		'Messages',
+		'msg_custom',
+		button(
+			'Show / hide a custom message (edit the text)',
+			'SHOW\\nMSG',
+			combineRgb(50, 30, 80),
+			press({ actionId: 'toggleMessage', options: { text: 'MESSAGE', layout: 'pref' } }),
+			[{ feedbackId: 'messageVisible', style: { bgcolor: combineRgb(120, 0, 120), text: 'HIDE\\nMSG' }, options: {} }],
+		),
+	)
+	add(
+		'Messages',
+		'msg_hide',
+		button('Hide message', 'HIDE\\nMSG', combineRgb(50, 50, 50), press({ actionId: 'hideMessage', options: {} }), [
+			{ feedbackId: 'messageVisible', style: { bgcolor: combineRgb(120, 0, 120) }, options: {} },
+		]),
+	)
+	add(
+		'Messages',
+		'msg_keep_timer',
+		button(
+			'Keep timer visible (toggle)',
+			'MSG +\\nTIMER',
+			DARK,
+			press({ actionId: 'setOption', options: { option: 'messageWithTimer', state: 'toggle' } }),
+			[optionOn('messageWithTimer')],
+		),
+	)
+	add(
+		'Messages',
+		'msg_auto',
+		button(
+			'Auto-message at zero (toggle)',
+			'AUTO\\nMSG',
+			DARK,
+			press({ actionId: 'setOption', options: { option: 'autoMessage', state: 'toggle' } }),
+			[optionOn('autoMessage')],
+		),
+	)
 
-  // --- Mode ---
-  presets['mode_countdown'] = {
-    type: 'button',
-    category: 'Mode',
-    name: 'Count Down',
-    style: {
-      text: 'COUNT\\nDOWN',
-      size: 14,
-      color: combineRgb(255, 255, 255),
-      bgcolor: combineRgb(40, 40, 60),
-    },
-    steps: [{ down: [{ actionId: 'modeCountdown', options: {} }], up: [] }],
-    feedbacks: [
-      {
-        feedbackId: 'modeCountdown',
-        style: { bgcolor: combineRgb(0, 120, 0) },
-        options: {},
-      },
-    ],
-  }
+	// ───────── Stopwatch ─────────
+	add(
+		'Stopwatch',
+		'sw_mode',
+		button('Stopwatch mode', 'STOP\\nWATCH', NAVY, press({ actionId: 'mode', options: { mode: 'stopwatch' } }), [
+			modeIs('stopwatch'),
+		]),
+	)
+	add(
+		'Stopwatch',
+		'sw_start',
+		button(
+			'Start stopwatch from zero (switches mode)',
+			'START\\nSTOPWATCH',
+			GREEN,
+			press({ actionId: 'mode', options: { mode: 'stopwatch' } }, { actionId: 'start', options: {} }),
+			[{ feedbackId: 'timerRunning', style: { bgcolor: combineRgb(0, 180, 0) }, options: {} }],
+		),
+	)
+	add(
+		'Stopwatch',
+		'sw_live',
+		button(
+			'Live stopwatch readout (display only)',
+			V('formattedTime'),
+			BLACK,
+			NO_ACTION,
+			[{ feedbackId: 'timerRunning', style: { color: combineRgb(0, 255, 0) }, options: {} }],
+			18,
+		),
+	)
+	add(
+		'Stopwatch',
+		'sw_reset',
+		button('Reset stopwatch', 'RESET', combineRgb(30, 30, 80), press({ actionId: 'clear', options: {} }), [], 18),
+	)
+	add(
+		'Stopwatch',
+		'sw_ms',
+		button('Milliseconds (toggle)', 'MS', NAVY, press({ actionId: 'milliseconds', options: { state: 'toggle' } }), [
+			optionOn('milliseconds'),
+		]),
+	)
 
-  presets['mode_clock'] = {
-    type: 'button',
-    category: 'Mode',
-    name: 'Local Time',
-    style: {
-      text: 'LOCAL\\nTIME',
-      size: 14,
-      color: combineRgb(255, 255, 255),
-      bgcolor: combineRgb(40, 40, 60),
-    },
-    steps: [{ down: [{ actionId: 'modeLocalTime', options: {} }], up: [] }],
-    feedbacks: [
-      {
-        feedbackId: 'modeLocalTime',
-        style: { bgcolor: combineRgb(0, 120, 0) },
-        options: {},
-      },
-    ],
-  }
+	// ───────── Clock ─────────
+	add(
+		'Clock',
+		'clock_mode',
+		button(
+			'Clock mode (time of day)',
+			'CLOCK',
+			NAVY,
+			press({ actionId: 'mode', options: { mode: 'clock' } }),
+			[modeIs('clock')],
+			18,
+		),
+	)
+	add(
+		'Clock',
+		'clock_format',
+		button(
+			'Clock 12h / 24h (toggle)',
+			V('clockFormat'),
+			NAVY,
+			press({ actionId: 'clockFormat', options: { format: 'toggle' } }),
+			[],
+			18,
+		),
+	)
+	add(
+		'Clock',
+		'clock_corner',
+		button(
+			'Corner clock on the timer (toggle)',
+			'CORNER\\nCLOCK',
+			DARK,
+			press({ actionId: 'setOption', options: { option: 'cornerClock', state: 'toggle' } }),
+			[optionOn('cornerClock')],
+		),
+	)
+	const zoneButtons: Array<[string, string]> = [
+		['system', 'SYSTEM\\nZONE'],
+		['America/New_York', 'EASTERN'],
+		['America/Chicago', 'CENTRAL'],
+		['America/Denver', 'MOUNTAIN'],
+		['America/Los_Angeles', 'PACIFIC'],
+		['UTC', 'UTC'],
+		['Europe/London', 'LONDON'],
+	]
+	for (const [zone, text] of zoneButtons) {
+		const label = TIME_ZONES.find((z) => z.id === zone)?.label ?? zone
+		add(
+			'Clock',
+			`zone_${zone.replace(/[^a-z]/gi, '_')}`,
+			button(`Time zone: ${label}`, text, DARK, press({ actionId: 'setTimeZone', options: { zone, custom: '' } }), [
+				{ feedbackId: 'timeZoneIs', style: { bgcolor: ON }, options: { zone, custom: '' } },
+			]),
+		)
+	}
 
-  presets['mode_countup'] = {
-    type: 'button',
-    category: 'Mode',
-    name: 'Count Up',
-    style: {
-      text: 'COUNT\\nUP',
-      size: 14,
-      color: combineRgb(255, 255, 255),
-      bgcolor: combineRgb(40, 40, 60),
-    },
-    steps: [{ down: [{ actionId: 'countUpOn', options: {} }], up: [] }],
-    feedbacks: [
-      {
-        feedbackId: 'countUpActive',
-        style: { bgcolor: combineRgb(0, 120, 0) },
-        options: {},
-      },
-    ],
-  }
+	// ───────── Countdown ─────────
+	add(
+		'Countdown',
+		'cd_mode',
+		button('Countdown mode', 'COUNT\\nDOWN', NAVY, press({ actionId: 'mode', options: { mode: 'countdown' } }), [
+			modeIs('countdown'),
+		]),
+	)
+	const wraps: Array<[string, number, number]> = [
+		['WRAP\\n1:00', 1, 0],
+		['WRAP\\n2:00', 2, 0],
+		['WRAP\\n5:00', 5, 0],
+		['WRAP\\nOFF', 0, 0],
+	]
+	for (const [label, m, s] of wraps) {
+		add(
+			'Countdown',
+			`wrap_${m}_${s}`,
+			button(
+				`Wrap-up warning ${m}:${String(s).padStart(2, '0')}`,
+				label,
+				combineRgb(90, 80, 0),
+				press({ actionId: 'setWrapUp', options: { minutes: m, seconds: s } }),
+			),
+		)
+	}
+	const optionButtons: Array<[string, string, string]> = [
+		['flash', 'Flash light at zero (toggle)', 'FLASH\\nLIGHT'],
+		['flashBorder', 'Flash border at zero (toggle)', 'FLASH\\nBORDER'],
+		['stopAtZero', 'Stop at zero (toggle)', 'STOP\\nAT 0'],
+		['sound', 'Buzzer at zero (toggle)', 'BUZZER'],
+		['progress', 'Progress bar (toggle)', 'PROG\\nBAR'],
+	]
+	for (const [option, name, text] of optionButtons) {
+		add(
+			'Countdown',
+			`cd_${option}`,
+			button(name, text, DARK, press({ actionId: 'setOption', options: { option, state: 'toggle' } }), [
+				optionOn(option),
+			]),
+		)
+	}
+	add(
+		'Countdown',
+		'cd_sound_test',
+		button('Test buzzer', 'TEST\\nBUZZER', combineRgb(80, 60, 0), press({ actionId: 'soundTest', options: {} })),
+	)
 
-  // --- Live Display ---
-  presets['live_timer'] = {
-    type: 'button',
-    category: 'Live Display',
-    name: 'Live Timer (display only)',
-    style: {
-      text: '$(wakemedia-stagetime:formattedTime)',
-      size: 18,
-      color: combineRgb(255, 255, 255),
-      bgcolor: combineRgb(0, 0, 0),
-    },
-    steps: [{ down: [], up: [] }],
-    feedbacks: [
-      {
-        feedbackId: 'lightColor',
-        options: {},
-      },
-    ],
-  }
+	// ───────── Display ─────────
+	add(
+		'Display',
+		'display_blackout',
+		button(
+			'Blackout (toggle)',
+			'BLACK\\nOUT',
+			combineRgb(60, 0, 0),
+			press({ actionId: 'blackout', options: { state: 'toggle' } }),
+			[
+				{
+					feedbackId: 'blackout',
+					style: { bgcolor: BLACK, color: combineRgb(255, 60, 60), text: 'BLACKED\\nOUT' },
+					options: {},
+				},
+			],
+		),
+	)
+	add(
+		'Display',
+		'display_blue',
+		button(
+			'Blue keying background (toggle)',
+			'BLUE\\nBG',
+			DARK,
+			press({ actionId: 'background', options: { color: 'toggle' } }),
+			[optionOn('bgBlue', combineRgb(0, 60, 200))],
+		),
+	)
 
-  return presets
+	self.setPresetDefinitions(structure, presets)
 }
