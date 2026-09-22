@@ -1,5 +1,9 @@
 # companion-module-wakemedia-stagetime
 
+## 1.1.1 — 2026-09-22
+
+First submission to the Companion module store. Identical to 1.1.0; re-tagged because the `v1.1.0` tag already existed on an older commit.
+
 ## 1.1.0 — 2026-09-22
 
 Full coverage of the StageTime 1.1 API. Rebuilt on `@companion-module/base` 2.x, so it requires Companion 4.0 or later.
