@@ -37,6 +37,16 @@ export type ActionsSchema = {
 	setTimeZone: { options: { zone: string; custom: string } }
 	setOption: { options: { option: string; state: OnOffToggle } }
 	soundTest: { options: Record<string, never> }
+	soundVolume: { options: { level: number } }
+	soundDefault: { options: Record<string, never> }
+	mirror: { options: { monitor: number; state: 'on' | 'off' } }
+	clearLog: { options: Record<string, never> }
+	rundownNext: { options: Record<string, never> }
+	rundownPrev: { options: Record<string, never> }
+	rundownGo: { options: { cue: number; start: 'go' | 'load' } }
+	rundownStandby: { options: { cue: number } }
+	rundownAutoAdvance: { options: { state: OnOffToggle } }
+	rundownReset: { options: Record<string, never> }
 	flashOn: { options: Record<string, never> }
 	flashOff: { options: Record<string, never> }
 	stopAtZeroOn: { options: Record<string, never> }
@@ -441,6 +451,110 @@ export function UpdateActions(self: StageTimeInstance): void {
 			options: [],
 			callback: async () => {
 				await self.sendApi('/api/sound/test')
+			},
+		},
+		soundVolume: {
+			name: 'Option: Buzzer volume',
+			options: [{ type: 'number', id: 'level', label: 'Volume (0–100)', default: 100, min: 0, max: 100 }],
+			callback: async (event) => {
+				await self.sendApi(
+					`/api/sound/volume?level=${Math.max(0, Math.min(100, Math.round(Number(event.options.level))))}`,
+				)
+			},
+		},
+		soundDefault: {
+			name: 'Option: Buzzer back to built-in beeps',
+			description: 'Drops any custom sound chosen under Options ▸ Buzzer Sound… in StageTime',
+			options: [],
+			callback: async () => {
+				await self.sendApi('/api/sound/default')
+			},
+		},
+		mirror: {
+			name: 'Display: Mirror to a monitor',
+			description: "Monitors are numbered as in StageTime's Display On… menu (and /api/displays)",
+			options: [
+				{ type: 'number', id: 'monitor', label: 'Monitor number', default: 2, min: 1, max: 16 },
+				{
+					type: 'dropdown',
+					id: 'state',
+					label: 'State',
+					default: 'on',
+					choices: [
+						{ id: 'on', label: 'On' },
+						{ id: 'off', label: 'Off' },
+					],
+				},
+			],
+			callback: async (event) => {
+				const n = Math.max(1, Math.round(Number(event.options.monitor)))
+				await self.sendApi(`/api/mirror/${n}/${event.options.state === 'off' ? 'off' : 'on'}`)
+			},
+		},
+		rundownNext: {
+			name: 'Rundown: GO (fire the standby cue)',
+			description: 'Loads and starts the standby cue and puts the following one on standby, like the GO button',
+			options: [],
+			callback: async () => {
+				await self.sendApi('/api/rundown/next')
+			},
+		},
+		rundownPrev: {
+			name: 'Rundown: Previous cue',
+			options: [],
+			callback: async () => {
+				await self.sendApi('/api/rundown/prev')
+			},
+		},
+		rundownGo: {
+			name: 'Rundown: Go to cue',
+			options: [
+				{ type: 'number', id: 'cue', label: 'Cue number', default: 1, min: 1, max: 999 },
+				{
+					type: 'dropdown',
+					id: 'start',
+					label: 'Then',
+					default: 'go',
+					choices: [
+						{ id: 'go', label: 'Load and start' },
+						{ id: 'load', label: 'Load only' },
+					],
+				},
+			],
+			callback: async (event) => {
+				const n = Math.max(1, Math.round(Number(event.options.cue)))
+				await self.sendApi(`/api/rundown/${event.options.start === 'load' ? 'load' : 'go'}/${n}`)
+			},
+		},
+		rundownStandby: {
+			name: 'Rundown: Stand by cue',
+			description: 'Puts cue N on standby so the next GO fires it',
+			options: [{ type: 'number', id: 'cue', label: 'Cue number', default: 1, min: 1, max: 999 }],
+			callback: async (event) => {
+				await self.sendApi(`/api/rundown/standby/${Math.max(1, Math.round(Number(event.options.cue)))}`)
+			},
+		},
+		rundownAutoAdvance: {
+			name: 'Rundown: Auto-advance at zero',
+			options: [{ type: 'dropdown', id: 'state', label: 'State', default: 'toggle', choices: STATE_CHOICES }],
+			callback: async (event) => {
+				let on = event.options.state === 'on'
+				if (event.options.state === 'toggle') on = !self.state.rundownAutoAdvance
+				await self.sendApi(`/api/rundown/autoadvance/${on ? 'on' : 'off'}`)
+			},
+		},
+		rundownReset: {
+			name: 'Rundown: Reset run data',
+			options: [],
+			callback: async () => {
+				await self.sendApi('/api/rundown/reset')
+			},
+		},
+		clearLog: {
+			name: 'App: Reset the connection log',
+			options: [],
+			callback: async () => {
+				await self.sendApi('/api/log/clear')
 			},
 		},
 		flashOn: {

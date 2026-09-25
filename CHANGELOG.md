@@ -1,5 +1,14 @@
 # companion-module-wakemedia-stagetime
 
+## 1.2.0 — 2026-09-24
+
+For StageTime 1.2.
+
+- **API key.** A masked API key field in the connection settings. When StageTime has a key set, every command carries it as the `X-API-Key` header; status and the event stream never need it.
+- New actions: buzzer volume, buzzer back to built-in beeps, mirror the display to a monitor, reset the connection log. The ends-at readout is available through the generic option action and feedback, with a Clock preset.
+- **Rundown.** Actions for next, previous, go to cue N (or load only), auto-advance and reset; feedbacks for "cue N is live" and "live cue over plan"; variables for the live and next cue names, cue number, run time and over/under; a Rundown preset section.
+- New variables: `showEndsAt`, `endsAt`, `buzzerSound`, `buzzerVolume`, `apiKeySet`, `mirrors`, `webRemoteEnabled`, `webRemoteSessions`.
+
 ## 1.1.1 — 2026-09-22
 
 First submission to the Companion module store. Identical to 1.1.0; re-tagged because the `v1.1.0` tag already existed on an older commit.

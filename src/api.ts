@@ -49,6 +49,22 @@ export interface StageTimeStatus {
 	quick_4_text: string
 	quick_5_text: string
 	quick_6_text: string
+	showEndsAt: boolean
+	endsAt: string
+	buzzerSound: string
+	buzzerVolume: number
+	apiKeySet: boolean
+	mirrors: number
+	rundownCount: number
+	rundownIndex: number
+	rundownCue: string
+	rundownStandby: number
+	rundownNext: string
+	rundownAutoAdvance: boolean
+	rundownActual: number
+	rundownOver: number
+	webRemoteEnabled: boolean
+	webRemoteSessions: number
 }
 
 export function getDefaultStatus(): StageTimeStatus {
@@ -99,6 +115,22 @@ export function getDefaultStatus(): StageTimeStatus {
 		quick_4_text: '',
 		quick_5_text: '',
 		quick_6_text: '',
+		showEndsAt: false,
+		endsAt: '',
+		buzzerSound: 'default',
+		buzzerVolume: 100,
+		apiKeySet: false,
+		mirrors: 0,
+		rundownCount: 0,
+		rundownIndex: 0,
+		rundownCue: '',
+		rundownStandby: 0,
+		rundownNext: '',
+		rundownAutoAdvance: false,
+		rundownActual: 0,
+		rundownOver: 0,
+		webRemoteEnabled: false,
+		webRemoteSessions: 0,
 	}
 }
 
@@ -116,9 +148,12 @@ export interface ApiResponse {
 }
 
 /** GET a StageTime API path. Resolves with the JSON body; a non-JSON body or network error rejects. */
-export async function sendCommand(host: string, port: number, path: string): Promise<ApiResponse> {
+export async function sendCommand(host: string, port: number, path: string, apiKey?: string): Promise<ApiResponse> {
 	return new Promise((resolve, reject) => {
-		const req = http.get({ hostname: host, port, path, timeout: 3000 }, (res) => {
+		// StageTime 1.2+ can require a key for commands; it rides along as a header
+		const headers: Record<string, string> = {}
+		if (apiKey) headers['X-API-Key'] = apiKey
+		const req = http.get({ hostname: host, port, path, timeout: 3000, headers }, (res) => {
 			let data = ''
 			res.on('data', (chunk) => (data += chunk))
 			res.on('end', () => {
@@ -329,6 +364,20 @@ export const TOGGLE_OPTIONS: ToggleOption[] = [
 		offPath: '/api/milliseconds/off',
 	},
 	{ id: 'hour12', label: '12-hour clock', statusKey: 'hour12', onPath: '/api/clock/12h', offPath: '/api/clock/24h' },
+	{
+		id: 'endsAt',
+		label: 'Ends-at time on the display',
+		statusKey: 'showEndsAt',
+		onPath: '/api/endsat/on',
+		offPath: '/api/endsat/off',
+	},
+	{
+		id: 'rundownAutoAdvance',
+		label: 'Rundown auto-advance at zero',
+		statusKey: 'rundownAutoAdvance',
+		onPath: '/api/rundown/autoadvance/on',
+		offPath: '/api/rundown/autoadvance/off',
+	},
 ]
 
 export const TIME_ZONES: Array<{ id: string; label: string }> = [

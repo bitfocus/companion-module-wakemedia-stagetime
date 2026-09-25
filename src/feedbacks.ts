@@ -21,6 +21,9 @@ export type FeedbacksSchema = {
 	presetSet: { type: 'boolean'; options: { slot: string } }
 	optionOn: { type: 'boolean'; options: { option: string } }
 	timeZoneIs: { type: 'boolean'; options: { zone: string; custom: string } }
+	rundownCueIs: { type: 'boolean'; options: { cue: number } }
+	rundownStandbyIs: { type: 'boolean'; options: { cue: number } }
+	rundownOver: { type: 'boolean'; options: Empty }
 	blackout: { type: 'boolean'; options: Empty }
 }
 
@@ -260,6 +263,30 @@ export function UpdateFeedbacks(self: StageTimeInstance): void {
 						: String(feedback.options.zone)
 				return want !== '' && s().timeZone === want
 			},
+		},
+		rundownCueIs: {
+			type: 'boolean',
+			name: 'Rundown: cue N is live',
+			description: 'True while the given cue number is the live one',
+			options: [{ type: 'number', id: 'cue', label: 'Cue number', default: 1, min: 1, max: 999 }],
+			defaultStyle: { bgcolor: COLORS.on, color: WHITE },
+			callback: (feedback) => s().rundownIndex === Number(feedback.options.cue),
+		},
+		rundownStandbyIs: {
+			type: 'boolean',
+			name: 'Rundown: cue N is on standby',
+			description: 'True while the given cue number is the one GO will fire',
+			options: [{ type: 'number', id: 'cue', label: 'Cue number', default: 1, min: 1, max: 999 }],
+			defaultStyle: { bgcolor: COLORS.blue, color: WHITE },
+			callback: (feedback) => s().rundownStandby === Number(feedback.options.cue),
+		},
+		rundownOver: {
+			type: 'boolean',
+			name: 'Rundown: live cue is over plan',
+			description: 'True once the live cue has run longer than planned',
+			options: [],
+			defaultStyle: { bgcolor: COLORS.red, color: WHITE },
+			callback: () => s().rundownIndex > 0 && s().rundownOver > 0,
 		},
 		blackout: {
 			type: 'boolean',

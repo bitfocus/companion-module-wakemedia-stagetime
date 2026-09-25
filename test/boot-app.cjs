@@ -14,7 +14,16 @@ const PORT = Number(process.env.PORT || 18098)
 const USERDATA = fs.mkdtempSync(path.join(os.tmpdir(), 'stagetime-module-test-'))
 fs.writeFileSync(
 	path.join(USERDATA, 'config.json'),
-	JSON.stringify({ apiPort: PORT, quickMessages: ['WRAP UP', 'Q&A'], timeZone: 'America/New_York' }),
+	JSON.stringify({
+		apiPort: PORT,
+		quickMessages: ['WRAP UP', 'Q&A'],
+		timeZone: 'America/New_York',
+		apiKey: process.env.STAGETIME_API_KEY || '',
+		// STAGETIME_WEB_PIN turns the web remote on with that PIN (for screenshots / manual checks)
+		...(process.env.STAGETIME_WEB_PIN
+			? { webRemote: { enabled: true, pin: process.env.STAGETIME_WEB_PIN } }
+			: {}),
+	}),
 )
 fs.writeFileSync(
 	path.join(USERDATA, 'presets.json'),

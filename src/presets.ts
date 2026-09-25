@@ -310,6 +310,18 @@ export function UpdatePresets(self: StageTimeInstance): void {
 		)
 	}
 
+	add(
+		'Clock',
+		'clock_ends_at',
+		button(
+			'Ends-at time on the display (toggle)',
+			'ENDS\\nAT',
+			DARK,
+			press({ actionId: 'setOption', options: { option: 'endsAt', state: 'toggle' } }),
+			[optionOn('endsAt')],
+		),
+	)
+
 	// ───────── Countdown ─────────
 	add(
 		'Countdown',
@@ -357,6 +369,59 @@ export function UpdatePresets(self: StageTimeInstance): void {
 		'cd_sound_test',
 		button('Test buzzer', 'TEST\\nBUZZER', combineRgb(80, 60, 0), press({ actionId: 'soundTest', options: {} })),
 	)
+
+	// ───────── Rundown ─────────
+	add(
+		'Rundown',
+		'rd_next',
+		button('GO (fire the standby cue)', 'GO', GREEN, press({ actionId: 'rundownNext', options: {} }), [], 18),
+	)
+	add('Rundown', 'rd_prev', button('Previous cue', 'PREV\\nCUE', DARK, press({ actionId: 'rundownPrev', options: {} })))
+	add(
+		'Rundown',
+		'rd_live',
+		button('Live cue readout (display only)', `${V('rundownCue')}\\n${V('formattedTimeSigned')}`, BLACK, NO_ACTION, [
+			{ feedbackId: 'lightColor', options: {} },
+		]),
+	)
+	add(
+		'Rundown',
+		'rd_next_name',
+		button('Standby cue name (display only)', `STANDBY:\\n${V('rundownNext')}`, combineRgb(30, 30, 50), NO_ACTION, []),
+	)
+	add(
+		'Rundown',
+		'rd_over',
+		button(
+			'Live cue over/under (display only)',
+			`${V('rundownOverFormatted')}`,
+			BLACK,
+			NO_ACTION,
+			[{ feedbackId: 'rundownOver', style: { bgcolor: combineRgb(200, 0, 0) }, options: {} }],
+			18,
+		),
+	)
+	add(
+		'Rundown',
+		'rd_auto',
+		button(
+			'Auto-advance at zero (toggle)',
+			'AUTO\\nADVANCE',
+			DARK,
+			press({ actionId: 'rundownAutoAdvance', options: { state: 'toggle' } }),
+			[{ feedbackId: 'optionOn', style: { bgcolor: ON }, options: { option: 'rundownAutoAdvance' } }],
+		),
+	)
+	for (let i = 1; i <= 4; i++) {
+		add(
+			'Rundown',
+			`rd_go_${i}`,
+			button(`Go to cue ${i}`, `CUE\\n${i}`, NAVY, press({ actionId: 'rundownGo', options: { cue: i, start: 'go' } }), [
+				{ feedbackId: 'rundownStandbyIs', style: { bgcolor: combineRgb(0, 60, 200) }, options: { cue: i } },
+				{ feedbackId: 'rundownCueIs', style: { bgcolor: ON }, options: { cue: i } },
+			]),
+		)
+	}
 
 	// ───────── Display ─────────
 	add(

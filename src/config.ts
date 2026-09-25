@@ -7,6 +7,11 @@ export type ModuleConfig = {
 	pollInterval: number
 }
 
+/** Kept separately by Companion: masked in the UI and left out of config exports */
+export type ModuleSecrets = {
+	apiKey: string
+}
+
 export function GetConfigFields(): SomeCompanionConfigField[] {
 	return [
 		{
@@ -15,7 +20,7 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 			width: 12,
 			label: 'StageTime',
 			value:
-				'Point this at the machine running StageTime. The host and port are shown inside the app under App ▸ API Reference…',
+				'Point this at the machine running StageTime. The host and port are shown inside the app under Help ▸ API Reference… (App menu in StageTime 1.1)',
 		},
 		{
 			type: 'textinput',
@@ -56,6 +61,21 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 			default: 500,
 			min: 200,
 			max: 5000,
+		},
+		{
+			type: 'secret-text',
+			id: 'apiKey',
+			label: 'API key',
+			width: 12,
+			default: '',
+		},
+		{
+			type: 'static-text',
+			id: 'apiKeyInfo',
+			width: 12,
+			label: '',
+			value:
+				"Only needed if StageTime has an API key set (App ▸ API Key…). Status and feedback never need it; commands do, and rejected ones appear in StageTime's Connection Log.",
 		},
 	]
 }

@@ -27,8 +27,10 @@ const haveApp = fs.existsSync(path.join(appDir, 'main.js'))
 // ---- stub instance: captures what the Update* functions register ----
 const calls = []
 const logs = []
+const API_KEY = 'module-test-key'
 const self = {
 	state: getDefaultStatus(),
+	secrets: { apiKey: API_KEY },
 	actions: {},
 	feedbacks: {},
 	variableDefs: {},
@@ -49,7 +51,8 @@ const self = {
 	},
 	log: (level, msg) => logs.push({ level, msg }),
 	async sendApi(p) {
-		const res = await sendCommand(HOST, PORT, p)
+		// same as main.ts: the key rides along as a header
+		const res = await sendCommand(HOST, PORT, p, this.secrets.apiKey || undefined)
 		calls.push({ path: p, res })
 		return res
 	},
@@ -96,6 +99,7 @@ const categories = new Set(Object.values(categoryOf))
 for (const cat of categories) {
 	const sigs = Object.entries(presets)
 		.filter(([id]) => categoryOf[id] === cat)
+		.filter(([, pr]) => pr.steps.some((st) => st.down.length || st.up.length)) // display-only readouts may share empty steps
 		.map(([, pr]) => JSON.stringify(pr.steps))
 	assert.strictEqual(new Set(sigs).size, sigs.length, `${cat}: no two presets with identical actions`)
 }
@@ -140,7 +144,7 @@ if (!haveApp) {
 async function apiChecks() {
 	// ---- boot the app ----
 	const app = spawn(process.execPath, [path.join(here, 'boot-app.cjs')], {
-		env: { ...process.env, PORT: String(PORT), STAGETIME_APP_DIR: appDir },
+		env: { ...process.env, PORT: String(PORT), STAGETIME_APP_DIR: appDir, STAGETIME_API_KEY: API_KEY },
 		stdio: ['pipe', 'pipe', 'inherit'],
 	})
 	await new Promise((resolve, reject) => {
@@ -158,7 +162,14 @@ async function apiChecks() {
 
 	try {
 		// 1) every action hits a real route the app accepts
-		const acceptableErrors = [/slot \d is empty/i, /not found/i, /no preset/i]
+		const acceptableErrors = [
+			/slot \d is empty/i,
+			/not found/i,
+			/no preset/i,
+			/no monitor/i,
+			/is the main display/i,
+			/no cue/i,
+		]
 		let fired = 0
 		for (const [id, def] of Object.entries(actions)) {
 			calls.length = 0
@@ -196,10 +207,19 @@ async function apiChecks() {
 			logs.some((l) => /HH:MM/.test(l.msg)),
 			'bad end-at time is rejected locally',
 		)
+		// the app requires the key for commands; status stays open (StageTime 1.2 API key)
+		{
+			const denied = await sendCommand(HOST, PORT, '/api/start')
+			assert.strictEqual(denied.ok, false)
+			assert.strictEqual(denied.error, 'API key required', 'no header → rejected')
+			const open = await sendCommand(HOST, PORT, '/api/status')
+			assert.strictEqual(open.ok, true, 'status never needs the key')
+			assert.strictEqual(open.apiKeySet, true)
+		}
 		// every toggle option's paths are real routes
 		for (const o of TOGGLE_OPTIONS) {
 			for (const p of [o.onPath, o.offPath]) {
-				const res = await sendCommand(HOST, PORT, p)
+				const res = await sendCommand(HOST, PORT, p, API_KEY)
 				assert.ok(res.ok, `${o.id}: ${p} → ${JSON.stringify(res)}`)
 			}
 			assert.ok(o.statusKey in self.state, `${o.id}: status key ${o.statusKey} exists`)

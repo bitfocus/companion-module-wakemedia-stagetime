@@ -56,6 +56,24 @@ export type VariablesSchema = {
 	quick_4_text: string
 	quick_5_text: string
 	quick_6_text: string
+	showEndsAt: Bool
+	endsAt: string
+	buzzerSound: string
+	buzzerVolume: number
+	apiKeySet: Bool
+	mirrors: number
+	rundownCount: number
+	rundownIndex: number
+	rundownCue: string
+	rundownStandby: number
+	rundownNext: string
+	rundownAutoAdvance: Bool
+	rundownActual: number
+	rundownActualFormatted: string
+	rundownOver: number
+	rundownOverFormatted: string
+	webRemoteEnabled: Bool
+	webRemoteSessions: number
 }
 
 export function UpdateVariableDefinitions(self: StageTimeInstance): void {
@@ -117,6 +135,24 @@ export function UpdateVariableDefinitions(self: StageTimeInstance): void {
 		quick_4_text: { name: 'Quick message 4' },
 		quick_5_text: { name: 'Quick message 5' },
 		quick_6_text: { name: 'Quick message 6' },
+		showEndsAt: { name: 'Ends-at readout on the display (true/false)' },
+		endsAt: { name: 'Time the countdown reaches zero (ISO), empty when idle' },
+		buzzerSound: { name: 'Buzzer sound (default / custom)' },
+		buzzerVolume: { name: 'Buzzer volume, 0–100' },
+		apiKeySet: { name: 'StageTime requires an API key (true/false)' },
+		mirrors: { name: 'Mirror windows open' },
+		rundownCount: { name: 'Rundown: number of cues' },
+		rundownIndex: { name: 'Rundown: live cue number (0 = none)' },
+		rundownCue: { name: 'Rundown: live cue name' },
+		rundownStandby: { name: 'Rundown: standby cue number (what GO fires next; 0 = none)' },
+		rundownNext: { name: 'Rundown: standby cue name (what GO fires next)' },
+		rundownAutoAdvance: { name: 'Rundown: auto-advance (true/false)' },
+		rundownActual: { name: 'Rundown: seconds the live cue has run' },
+		rundownActualFormatted: { name: 'Rundown: live cue run time (MM:SS)' },
+		rundownOver: { name: 'Rundown: live cue over/under in seconds (+ = over)' },
+		rundownOverFormatted: { name: 'Rundown: live cue over/under (±MM:SS)' },
+		webRemoteEnabled: { name: 'Web remote on (true/false)' },
+		webRemoteSessions: { name: 'Web remote devices signed in' },
 	})
 }
 
@@ -178,5 +214,27 @@ export function getVariableValues(s: StageTimeStatus): VariablesSchema {
 		quick_4_text: s.quick_4_text,
 		quick_5_text: s.quick_5_text,
 		quick_6_text: s.quick_6_text,
+		showEndsAt: bool(s.showEndsAt),
+		endsAt: s.endsAt ?? '',
+		buzzerSound: s.buzzerSound ?? 'default',
+		buzzerVolume: s.buzzerVolume ?? 100,
+		apiKeySet: bool(s.apiKeySet),
+		mirrors: s.mirrors ?? 0,
+		rundownCount: s.rundownCount ?? 0,
+		rundownIndex: s.rundownIndex ?? 0,
+		rundownCue: s.rundownCue ?? '',
+		rundownStandby: s.rundownStandby ?? 0,
+		rundownNext: s.rundownNext ?? '',
+		rundownAutoAdvance: bool(!!s.rundownAutoAdvance),
+		rundownActual: s.rundownActual ?? 0,
+		rundownActualFormatted: `${pad(Math.floor((s.rundownActual ?? 0) / 60))}:${pad((s.rundownActual ?? 0) % 60)}`,
+		rundownOver: s.rundownOver ?? 0,
+		rundownOverFormatted: (() => {
+			const o = s.rundownOver ?? 0
+			const a = Math.abs(o)
+			return (o > 0 ? '+' : o < 0 ? '-' : '') + `${pad(Math.floor(a / 60))}:${pad(a % 60)}`
+		})(),
+		webRemoteEnabled: bool(!!s.webRemoteEnabled),
+		webRemoteSessions: s.webRemoteSessions ?? 0,
 	}
 }

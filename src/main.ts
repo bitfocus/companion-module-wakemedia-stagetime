@@ -1,5 +1,5 @@
 import { InstanceBase, InstanceStatus, type SomeCompanionConfigField } from '@companion-module/base'
-import { GetConfigFields, type ModuleConfig } from './config.js'
+import { GetConfigFields, type ModuleConfig, type ModuleSecrets } from './config.js'
 import { UpdateVariableDefinitions, getVariableValues, type VariablesSchema } from './variables.js'
 import { UpgradeScripts } from './upgrades.js'
 import { UpdateActions, type ActionsSchema } from './actions.js'
@@ -16,7 +16,7 @@ import {
 
 export type ModuleSchema = {
 	config: ModuleConfig
-	secrets: undefined
+	secrets: ModuleSecrets
 	actions: ActionsSchema
 	feedbacks: FeedbacksSchema
 	variables: VariablesSchema
@@ -26,6 +26,7 @@ export { UpgradeScripts }
 
 export default class StageTimeInstance extends InstanceBase<ModuleSchema> {
 	config!: ModuleConfig // Setup in init()
+	secrets: ModuleSecrets = { apiKey: '' }
 	/** Latest status reported by the app */
 	state: StageTimeStatus = getDefaultStatus()
 	#pollTimer: ReturnType<typeof setInterval> | null = null
@@ -35,8 +36,9 @@ export default class StageTimeInstance extends InstanceBase<ModuleSchema> {
 		super(internal)
 	}
 
-	async init(config: ModuleConfig): Promise<void> {
+	async init(config: ModuleConfig, _isFirstInit: boolean, secrets: ModuleSecrets | undefined): Promise<void> {
 		this.config = config
+		this.secrets = secrets ?? { apiKey: '' }
 		this.updateStatus(InstanceStatus.Connecting)
 
 		this.updateActions()
@@ -53,8 +55,9 @@ export default class StageTimeInstance extends InstanceBase<ModuleSchema> {
 		this.disconnect()
 	}
 
-	async configUpdated(config: ModuleConfig): Promise<void> {
+	async configUpdated(config: ModuleConfig, secrets: ModuleSecrets | undefined): Promise<void> {
 		this.config = config
+		this.secrets = secrets ?? { apiKey: '' }
 		this.disconnect()
 		this.updateStatus(InstanceStatus.Connecting)
 		this.connect()
@@ -85,7 +88,7 @@ export default class StageTimeInstance extends InstanceBase<ModuleSchema> {
 	/** GET a path. Logs and swallows failures so a bad button never breaks the module. */
 	async sendApi(path: string): Promise<ApiResponse | null> {
 		try {
-			const res = await sendCommand(this.config.host, this.config.port, path)
+			const res = await sendCommand(this.config.host, this.config.port, path, this.secrets.apiKey || undefined)
 			if (!res.ok) this.log('warn', `StageTime rejected ${path}: ${res.error ?? 'unknown error'}`)
 			return res
 		} catch (err) {

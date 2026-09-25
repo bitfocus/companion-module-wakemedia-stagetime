@@ -1,6 +1,6 @@
 {
 	"name": "companion-module-wakemedia-stagetime",
-	"version": "1.1.1",
+	"version": "1.2.0",
 	"description": "Control the StageTime countdown timer app: timer, presets, messages, blackout, options, with live feedback over its event stream",
 	"main": "dist/main.js",
 	"type": "module",
