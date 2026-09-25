@@ -1,5 +1,12 @@
 # companion-module-wakemedia-stagetime
 
+## 1.2.1 — 2026-09-24
+
+Review fixes from the store submission of 1.2.0.
+
+- The zone dropdowns in "Set time zone" and "Time zone is" carry `disableAutoExpression`, so the custom-zone field shows and hides correctly even when the dropdown is switched to expression mode.
+- "Count down to a clock time" rejects hours above 23 and minutes above 59 instead of forwarding them to StageTime.
+
 ## 1.2.0 — 2026-09-24
 
 For StageTime 1.2.

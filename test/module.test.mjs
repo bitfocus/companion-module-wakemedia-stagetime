@@ -207,6 +207,23 @@ async function apiChecks() {
 			logs.some((l) => /HH:MM/.test(l.msg)),
 			'bad end-at time is rejected locally',
 		)
+		const beforeEnd = calls.length
+		for (const bad of ['99:99', '24:00', '12:60']) {
+			await actions.endAt.callback({ actionId: 'endAt', options: { time: bad } }, context)
+		}
+		assert.strictEqual(calls.length, beforeEnd, 'out-of-range hours/minutes never reach the API')
+		await actions.endAt.callback({ actionId: 'endAt', options: { time: '23:59' } }, context)
+		assert.strictEqual(calls.at(-1).path, '/api/endat?time=23%3A59', 'a valid time is sent')
+		await actions.endAt.callback({ actionId: 'endAt', options: { time: '9:05' } }, context)
+		assert.strictEqual(calls.at(-1).path, '/api/endat?time=9%3A05', 'single-digit hour accepted')
+		// API 2.0: a field referenced by isVisibleExpression must have disableAutoExpression
+		for (const [what, def] of [
+			['action setTimeZone', actions.setTimeZone],
+			['feedback timeZoneIs', feedbacks.timeZoneIs],
+		]) {
+			const zone = def.options.find((o) => o.id === 'zone')
+			assert.strictEqual(zone.disableAutoExpression, true, `${what}: zone dropdown has disableAutoExpression`)
+		}
 		// the app requires the key for commands; status stays open (StageTime 1.2 API key)
 		{
 			const denied = await sendCommand(HOST, PORT, '/api/start')

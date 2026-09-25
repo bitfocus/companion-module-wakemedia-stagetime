@@ -20,9 +20,7 @@ fs.writeFileSync(
 		timeZone: 'America/New_York',
 		apiKey: process.env.STAGETIME_API_KEY || '',
 		// STAGETIME_WEB_PIN turns the web remote on with that PIN (for screenshots / manual checks)
-		...(process.env.STAGETIME_WEB_PIN
-			? { webRemote: { enabled: true, pin: process.env.STAGETIME_WEB_PIN } }
-			: {}),
+		...(process.env.STAGETIME_WEB_PIN ? { webRemote: { enabled: true, pin: process.env.STAGETIME_WEB_PIN } } : {}),
 	}),
 )
 fs.writeFileSync(

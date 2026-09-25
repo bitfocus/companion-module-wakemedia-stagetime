@@ -246,7 +246,14 @@ export function UpdateFeedbacks(self: StageTimeInstance): void {
 			name: 'Clock: time zone is',
 			description: 'True when the clock is set to the chosen time zone',
 			options: [
-				{ type: 'dropdown', id: 'zone', label: 'Zone', default: 'system', choices: TIME_ZONES },
+				{
+					type: 'dropdown',
+					id: 'zone',
+					label: 'Zone',
+					default: 'system',
+					choices: TIME_ZONES,
+					disableAutoExpression: true,
+				},
 				{
 					type: 'textinput',
 					id: 'custom',

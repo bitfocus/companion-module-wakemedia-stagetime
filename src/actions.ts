@@ -175,8 +175,9 @@ export function UpdateActions(self: StageTimeInstance): void {
 			options: [{ type: 'textinput', id: 'time', label: 'Time (HH:MM)', default: '14:30', useVariables: true }],
 			callback: async (event) => {
 				const time = String(event.options.time ?? '').trim()
-				if (!/^\d{1,2}:\d{2}$/.test(time)) {
-					self.log('warn', `End at: "${time}" is not HH:MM`)
+				const m = /^(\d{1,2}):(\d{2})$/.exec(time)
+				if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) {
+					self.log('warn', `End at: "${time}" is not a valid HH:MM (00:00–23:59)`)
 					return
 				}
 				await self.sendApi(`/api/endat?time=${encodeURIComponent(time)}`)
@@ -409,7 +410,14 @@ export function UpdateActions(self: StageTimeInstance): void {
 			name: 'Clock: Time zone',
 			description: 'Zone for the clock and for "count down to a clock time"',
 			options: [
-				{ type: 'dropdown', id: 'zone', label: 'Zone', default: 'system', choices: TIME_ZONES },
+				{
+					type: 'dropdown',
+					id: 'zone',
+					label: 'Zone',
+					default: 'system',
+					choices: TIME_ZONES,
+					disableAutoExpression: true,
+				},
 				{
 					type: 'textinput',
 					id: 'custom',
